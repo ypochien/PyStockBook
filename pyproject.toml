@@ -1,0 +1,33 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project.scripts]
+flit = "flit:main"
+PyStockBook = "PyStockBook.cli:main"
+
+[project]
+name = "PyStockBook"
+authors = [{name = "ypochien", email = "ypochien@gmail.com"}]
+license = {file = "LICENSE"}
+classifiers = ["License :: OSI Approved :: MIT License"]
+platforms = "win32"
+dynamic = ["version", "description"]
+dependencies = [
+    "typer[all]",
+    "pandas",
+    "pyside6",
+    "pywin32",
+    "ujson",
+    "StrEnum",
+]
+requires-python = ">3.6,<3.11"
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "pytest",
+    "pytest-cov",
+    "pytest-mock",
+    "requests-mock",
+]
