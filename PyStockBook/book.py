@@ -19,13 +19,16 @@ class Book:
         cursor.execute("SELECT * FROM Stock")
         sdf = cursor.fetchall()
         exist_code = sdf.ado_results[0]
-        logger.info(f"寫入資料中... TWSE:  {self.stock.twse.shape}")
-        for _, row in self.stock.twse.iterrows():
-            code = row["code"]
+        logger.info(f"寫入資料中... TWSE:  {len(self.stock.twse)}")
+        cnt_twse = 0
+        cnt_tpex = 0
+        for code, row in self.stock.twse.items():
             if code not in exist_code:
                 continue
+            cnt_twse += 1
             if code == "2330":
-                logger.info(row.to_dict())
+                logger.info(f"{code}:{row}")
+
             name = row["name"]
             price = (
                 0.0
@@ -35,13 +38,13 @@ class Book:
             update_sql = f"UPDATE stock SET ClosingPrice = {price} , StockName ='{name}' WHERE StockNo = '{code}';"
             cursor.execute(update_sql)
 
-        logger.info(f"寫入資料中... TPEX:  {self.stock.tpex.shape}")
-        for _, row in self.stock.tpex.iterrows():
-            code = row["code"]
+        logger.info(f"寫入資料中... TPEX:  {len(self.stock.tpex)}")
+        for code, row in self.stock.tpex.items():
             if code not in exist_code:
                 continue
+            cnt_tpex += 1
             if code == "8299":
-                logger.info(row.to_dict())
+                logger.info(f"{code}:{row}")
             name = row["name"]
             price = 0.0 if row["close"] or row["close"] == "--" else float(row["close"])
             update_sql = f"UPDATE stock SET ClosingPrice = {price} , StockName ='{name}' WHERE StockNo = '{code}';"
@@ -49,6 +52,4 @@ class Book:
         connection.commit()
         cursor.close()
         connection.close()
-        logger.info(
-            f"更新完畢...TWSE: {self.stock.twse.shape}  TPEX: {self.stock.tpex.shape}"
-        )
+        logger.info(f"更新完畢...TWSE:{cnt_twse} TPEX: {cnt_tpex}")

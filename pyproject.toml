@@ -16,10 +16,8 @@ dynamic = ["version", "description"]
 dependencies = [
     "typer[all]",
     "loguru",
-    "pandas",
     "pyside6",
     "pywin32",
-    "ujson",
     "StrEnum",
 ]
 requires-python = ">3.6,<3.11"

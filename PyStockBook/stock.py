@@ -1,7 +1,9 @@
 from loguru import logger
 from strenum import StrEnum
 import requests
-import pandas as pd
+import typing
+
+# import pandas as pd
 
 
 class URL(StrEnum):
@@ -17,8 +19,8 @@ class Stock:
     def __init__(self):
         self.date: str = ""
 
-        self.twse: pd.DataFrame = pd.DataFrame()
-        self.tpex: pd.DataFrame = pd.DataFrame()
+        self.twse: typing.Dict = dict()
+        self.tpex: typing.Dict = dict()
 
     def get_twse_closing_price(self):
         logger.info("開始下載 TWSE...")
@@ -26,9 +28,10 @@ class Stock:
         if res.status_code != requests.codes.ok:
             logger.error(f"Request failed: {res.status_code}")
             return
-        df = pd.DataFrame(res.json())
-        self.twse = df[["Code", "Name", "ClosingPrice"]]
-        self.twse.columns = ["code", "name", "close"]
+        self.twse = {
+            item["Code"]: {"name": item["Name"], "close": item["ClosingPrice"]}
+            for item in res.json()
+        }
 
     def get_tpex_closing_price(self):
         logger.info("開始下載 TPEX...")
@@ -36,7 +39,11 @@ class Stock:
         if res.status_code != requests.codes.ok:
             logger.error(f"Request failed: {res.status_code}")
             return
-        df = pd.DataFrame(res.json())
-        self.date = df["Date"].iloc[0]
-        self.tpex = df[["SecuritiesCompanyCode", "CompanyName", "Close"]]
-        self.tpex.columns = ["code", "name", "close"]
+        self.tpex = {
+            item["SecuritiesCompanyCode"]: {
+                "name": item["CompanyName"],
+                "close": item["Close"],
+            }
+            for item in res.json()
+        }
+        self.date = res.json()[0]["Date"]

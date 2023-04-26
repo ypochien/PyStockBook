@@ -10,13 +10,13 @@ from PyStockBook.stock import Stock, URL
 def test_twse_date():
     sut = Stock()
     sut.get_twse_closing_price()
-    assert sut.twse.shape != (0, 0)
+    assert len(sut.twse) > 0
 
 
 def test_tpex_date():
     sut = Stock()
     sut.get_tpex_closing_price()
-    assert sut.tpex.shape != (0, 0)
+    assert len(sut.tpex) > 0
 
 
 def test_mock_twse_data():
@@ -37,7 +37,7 @@ def test_mock_twse_data():
         )
         sut.get_twse_closing_price()
 
-    assert sut.twse.shape == (18607, 3)
+    assert len(sut.twse) == 18607
 
 
 def test_mock_tpex_data():
@@ -58,4 +58,4 @@ def test_mock_tpex_data():
         )
         sut.get_tpex_closing_price()
 
-    assert sut.tpex.shape == (8404, 3)
+    assert len(sut.tpex) == 8404
