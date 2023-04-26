@@ -15,6 +15,7 @@ platforms = "win32"
 dynamic = ["version", "description"]
 dependencies = [
     "typer[all]",
+    "loguru",
     "pandas",
     "pyside6",
     "pywin32",
