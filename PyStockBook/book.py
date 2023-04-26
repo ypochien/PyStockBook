@@ -1,13 +1,12 @@
 from loguru import logger
-import pandas as pd
 from PyStockBook.sdf import open_sdf
 import adodbapi
 from .stock import Stock
-from adodbapi.apibase import variantConversions
 
 
 class Book:
     def __init__(self) -> None:
+        print("Start StockBook...")
         self.stock = Stock()
 
     def update_stock_close_price(self):

@@ -3,8 +3,6 @@ from strenum import StrEnum
 import requests
 import typing
 
-# import pandas as pd
-
 
 class URL(StrEnum):
     TWSE_CLOSING_PRICE = (

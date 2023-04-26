@@ -16,7 +16,6 @@ dynamic = ["version", "description"]
 dependencies = [
     "typer[all]",
     "loguru",
-    "pyside6",
     "pywin32",
     "StrEnum",
 ]
