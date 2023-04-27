@@ -10,6 +10,7 @@ class URL(StrEnum):
     ESB_TPEX_CLOSEING_PRICE = (
         "https://www.tpex.org.tw/openapi/v1/tpex_esb_latest_statistics"
     )
+    TWSE_XDXR = "https://openapi.twse.com.tw/v1/exchangeReport/TWT48U_ALL"
 
 
 class Stock:
@@ -19,6 +20,23 @@ class Stock:
         self.twse: typing.Dict = dict()
         self.tpex: typing.Dict = dict()
         self.esb: typing.Dict = dict()
+        self.twse_xdxr: typing.Dict = dict()
+
+    def get_twse_xdxr(self):
+        logger.info("開始下載上市除權息資料...")
+        res = requests.get(url=URL.TWSE_XDXR)
+        if res.status_code != requests.codes.ok:
+            logger.error(f"TWSE-XDXR Request failed: {res.status_code}")
+            return
+        self.twse_xdxr = {
+            item["Code"]: {
+                "date": item["date"],
+                "Exdividend": item["Exdividend"],
+                "CashDividend": item["CashDividend"],
+                "StockDividendRatio": item["StockDividendRatio"],
+            }
+            for item in res.json()
+        }
 
     def get_twse_closing_price(self):
         logger.info("開始下載 TWSE(上市)...")
