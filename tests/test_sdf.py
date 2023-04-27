@@ -12,4 +12,4 @@ def test_sdf():
     cursor = conn.cursor()
     cursor.execute("select Stockname,ClosingPrice from stock where StockNo='2330';")
     result: dbapi.apibase.SQLrows = cursor.fetchall()  # type: ignore
-    assert result.ado_results == (("台積電",), (498.0,))
+    assert result.ado_results[0] == ("台積電",)

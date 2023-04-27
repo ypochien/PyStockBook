@@ -21,7 +21,7 @@ def test_tpex_date():
 
 def test_mock_twse_data():
     script_dir = Path(os.path.dirname(os.path.abspath(__file__)))
-    jsonfile = script_dir / "data" / "STOCK_DAY_AVG_ALL.json"
+    jsonfile = script_dir / "data" / "STOCK_DAY_ALL.json"
     with open(jsonfile, "rb") as json_file:
         json_obj = json.load(json_file)
     json_text = json.dumps(json_obj)
@@ -37,12 +37,12 @@ def test_mock_twse_data():
         )
         sut.get_twse_closing_price()
 
-    assert len(sut.twse) == 18607
+    assert len(sut.twse) == 1191
 
 
 def test_mock_tpex_data():
     script_dir = Path(os.path.dirname(os.path.abspath(__file__)))
-    jsonfile = script_dir / "data" / "tpex_mainboard_daily_close_quotes.json"
+    jsonfile = script_dir / "data" / "tpex_mainboard_quotes.json"
     with open(jsonfile, "rb") as json_file:
         json_obj = json.load(json_file)
 
@@ -58,4 +58,4 @@ def test_mock_tpex_data():
         )
         sut.get_tpex_closing_price()
 
-    assert len(sut.tpex) == 8404
+    assert len(sut.tpex) == 905
