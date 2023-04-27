@@ -24,7 +24,7 @@ class Stock:
         logger.info("開始下載 TWSE...")
         res = requests.get(url=URL.TWSE_CLOSING_PRICE)
         if res.status_code != requests.codes.ok:
-            logger.error(f"Request failed: {res.status_code}")
+            logger.error(f"TWSE Request failed: {res.status_code}")
             return
         self.twse = {
             item["Code"]: {"name": item["Name"], "close": item["ClosingPrice"]}
@@ -35,7 +35,7 @@ class Stock:
         logger.info("開始下載 TPEX...")
         res = requests.get(url=URL.TPEX_CLOSEING_PRICE)
         if res.status_code != requests.codes.ok:
-            logger.error(f"Request failed: {res.status_code}")
+            logger.error(f"TPEX Request failed: {res.status_code}")
             return
         self.tpex = {
             item["SecuritiesCompanyCode"]: {

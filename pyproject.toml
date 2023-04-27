@@ -3,7 +3,6 @@ requires = ["flit_core >=3.2,<4"]
 build-backend = "flit_core.buildapi"
 
 [project.scripts]
-flit = "flit:main"
 PyStockBook = "PyStockBook.cli:main"
 
 [project]
@@ -11,13 +10,14 @@ name = "PyStockBook"
 authors = [{name = "ypochien", email = "ypochien@gmail.com"}]
 license = {file = "LICENSE"}
 classifiers = ["License :: OSI Approved :: MIT License"]
-platforms = "win32"
+platforms = ["win32","win64"]
 dynamic = ["version", "description"]
 dependencies = [
     "typer[all]",
     "loguru",
     "pywin32",
     "StrEnum",
+    "PySide6",
 ]
 requires-python = ">3.6,<3.11"
 
