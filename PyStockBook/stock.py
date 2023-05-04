@@ -2,6 +2,7 @@ from loguru import logger
 from strenum import StrEnum
 import requests
 import typing
+import datetime
 
 
 class URL(StrEnum):
@@ -28,12 +29,18 @@ class Stock:
         if res.status_code != requests.codes.ok:
             logger.error(f"TWSE-XDXR Request failed: {res.status_code}")
             return
+
         self.twse_xdxr = {
             item["Code"]: {
-                "date": item["date"],
-                "Exdividend": item["Exdividend"],
-                "CashDividend": item["CashDividend"],
-                "StockDividendRatio": item["StockDividendRatio"],
+                "date": datetime.datetime.strptime(
+                    str(int(item["Date"]) + 19110000), "%Y%m%d"
+                ).date(),
+                "xr": 0.0
+                if item["CashDividend"].strip() == ""
+                else float(item["CashDividend"]),
+                "xd": 0.0
+                if item["StockDividendRatio"].strip() == ""
+                else float(item["StockDividendRatio"]),
             }
             for item in res.json()
         }

@@ -13,8 +13,8 @@ class Book:
 
     def update_stock_close_price(self, sdf_path: typing.Optional[str] = None):
         def update_stock_price(stock_data):
-            logger.info(f"寫入資料中... :  {len(stock_data)}")
-            new_item = 0
+            logger.info(f"更新上市、上櫃、興櫃資料... :  {len(stock_data)}")
+            new_item = []
             for code, row in stock_data.items():
                 if code in ("2330", "2646", "8299"):
                     logger.info(f"{code}:{row}")
@@ -32,7 +32,7 @@ class Book:
                         "xdday": "",
                     }
                     try:
-                        new_item += 1
+                        new_item.append(f"{code} {row['name']}")
                         insert_sql = """INSERT INTO stock (stockno, market, stockname, unitshares, closingprice)
                                         VALUES ('%s', %s, '%s', %s, %s)""" % (
                             item["stockno"],
@@ -44,8 +44,7 @@ class Book:
                         cursor.execute(insert_sql)
 
                     except Exception as e:
-                        logger.warning(f"{item}")
-                        logger.warning(f"更新失敗 {code}:{row} {e}")
+                        logger.warning(f"TSE除權息更新失敗 {item} {code}:{row} [{e}]")
                         break
                 else:
                     name = row["name"]
@@ -59,13 +58,15 @@ class Book:
                         cursor.execute(update_sql)
                     except Exception as e:
                         logger.warning(f"更新失敗 {code}:{row} {e}")
-            logger.info(f"新增 {new_item} 筆商品 ")
+            logger.info(f"新增 {len(new_item)} 筆 股票 \n {new_item}")
 
         def update_stock_xdxr(stock_data):
-            logger.info(f"寫入資料中... :  {len(stock_data)}")
-            new_item = 0
+            logger.info(f"更新上市除權息資料... :  {len(stock_data)}")
+            # new_item = 0
             for code, row in stock_data.items():
                 if code not in exist_code:
+                    if row["xr"] == 0 and row["xd"] == 0:
+                        continue
                     item = {
                         "stockno": code,
                         "xr": row["xr"],
@@ -74,7 +75,7 @@ class Book:
                         "xdday": row["date"],
                     }
                     try:
-                        new_item += 1
+                        # new_item += 1
                         insert_sql = """INSERT INTO stock (stockno, xr, xrday, xd, xdday)
                                         VALUES ('%s', '%s', '%s', '%s', '%s')""" % (
                             item["stockno"],
@@ -87,15 +88,15 @@ class Book:
 
                     except Exception as e:
                         logger.warning(f"{item}")
-                        logger.warning(f"更新失敗 {code}:{row} {e}")
+                        logger.warning(f"新增失敗 {code}:{row} {e}")
                         break
                 else:
                     try:
-                        update_sql = f"UPDATE stock SET xr = '{row['xr']}', xrday = '{row['xrday']}', xd = '{row['xd']}', xdday = '{row['xdday']}' WHERE StockNo = '{code}';"
+                        update_sql = f"UPDATE stock SET xr = '{row['xr']}', xrday = '{row['date']}', xd = '{row['xd']}', xdday = '{row['date']}' WHERE StockNo = '{code}';"
                         cursor.execute(update_sql)
                     except Exception as e:
                         logger.warning(f"更新失敗 {code}:{row} {e}")
-            logger.info(f"新增 {new_item} 筆商品 ")
+            # logger.info(f"新增 {new_item} 筆商品 ")
 
         self.stock.get_twse_closing_price()
         self.stock.get_tpex_closing_price()
@@ -113,11 +114,16 @@ class Book:
         exist_code = sdf.ado_results[0]
 
         update_stock_price({**self.stock.twse, **self.stock.tpex, **self.stock.esb})
+        try:
+            connection.commit()
+        except Exception as e:
+            logger.warning(f"基本股價 回寫失敗 {e}")
+
         update_stock_xdxr({**self.stock.twse_xdxr})
         try:
             connection.commit()
         except Exception as e:
-            logger.warning(f"回寫失敗 {e}")
+            logger.warning(f"除權息 回寫失敗 {e}")
 
         cursor.close()
         connection.close()
