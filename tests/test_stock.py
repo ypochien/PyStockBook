@@ -19,6 +19,20 @@ def test_tpex_date():
     assert len(sut.tpex) > 0
 
 
+def test_load_xdxr():
+    script_dir = Path(os.path.dirname(os.path.abspath(__file__)))
+    jsonfile = script_dir / "data" / "xd.json"
+    sut = Stock()
+    sut.load_xdxr(jsonfile)
+    assert len(sut.xd) > 0
+    assert len(sut.xr) == 0
+
+    script_dir = Path(os.path.dirname(os.path.abspath(__file__)))
+    jsonfile = script_dir / "data" / "xr.json"
+    sut.load_xdxr(jsonfile)
+    assert len(sut.xr) > 0
+
+
 def test_mock_twse_data():
     script_dir = Path(os.path.dirname(os.path.abspath(__file__)))
     jsonfile = script_dir / "data" / "STOCK_DAY_ALL.json"

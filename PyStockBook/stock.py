@@ -3,6 +3,7 @@ from strenum import StrEnum
 import requests
 import typing
 import datetime
+import ujson as json
 
 
 class URL(StrEnum):
@@ -22,28 +23,17 @@ class Stock:
         self.tpex: typing.Dict = dict()
         self.esb: typing.Dict = dict()
         self.twse_xdxr: typing.Dict = dict()
+        self.xd: typing.List[typing.Dict[str, typing.Any]] = list()
+        self.xr: typing.List[typing.Dict[str, typing.Any]] = list()
 
-    def get_twse_xdxr(self):
-        logger.info("開始下載上市除權息資料...")
-        res = requests.get(url=URL.TWSE_XDXR)
-        if res.status_code != requests.codes.ok:
-            logger.error(f"TWSE-XDXR Request failed: {res.status_code}")
-            return
-
-        self.twse_xdxr = {
-            item["Code"]: {
-                "date": datetime.datetime.strptime(
-                    str(int(item["Date"]) + 19110000), "%Y%m%d"
-                ).date(),
-                "xr": 0.0
-                if item["CashDividend"].strip() == ""
-                else float(item["CashDividend"]),
-                "xd": 0.0
-                if item["StockDividendRatio"].strip() == ""
-                else float(item["StockDividendRatio"]),
-            }
-            for item in res.json()
-        }
+    def load_xdxr(self, json_file):
+        with open(json_file, "rb") as json_file:
+            data = json.load(json_file)
+            zipped = list(zip(*data.values()))
+            if "ExDividendDate" in data.keys():
+                self.xd = [dict(zip(data.keys(), values)) for values in zipped]
+            elif "ExRightsDate" in data.keys():
+                self.xr = [dict(zip(data.keys(), values)) for values in zipped]
 
     def get_twse_closing_price(self):
         logger.info("開始下載 TWSE(上市)...")
