@@ -12,21 +12,26 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QTextEdit,
 )
-from PySide6.QtCore import QThread
-import win32timezone
+from PySide6.QtCore import QObject, Signal, QThread
+
+
 
 from PyStockBook.book import Book
 from loguru import logger
 
+class UpdateStockTask(QObject):
+    started = Signal()
+    finished = Signal()
 
-class UpdateStockThread(QThread):
     def __init__(self, stock_book: Book, file_path: str):
         super().__init__()
         self.stock_book = stock_book
         self.file_path = file_path
 
     def run(self):
+        self.started.emit()
         self.stock_book.update_stock_close_price(self.file_path)
+        self.finished.emit()
 
 
 class QTextEditHandler(logging.Handler):
@@ -44,9 +49,42 @@ class QTextEditHandler(logging.Handler):
 
 
 class MainWindow(QMainWindow):
+    startUpdate = Signal(str)
+
     def __init__(self):
         super().__init__()
         self.init_ui()
+        self.update_task = None
+        self.update_thread = None
+
+    # Other methods remain the same ...
+
+    def on_run_button_click(self):
+        logger.info("開始更新股票資料...")
+
+        file_path = self.file_path_edit.text()
+        stock_book = Book()
+
+        self.update_task = UpdateStockTask(stock_book, file_path)
+        self.update_thread = QThread()
+
+        self.update_task.moveToThread(self.update_thread)
+
+        self.update_task.started.connect(self.on_update_started)
+        self.update_task.finished.connect(self.on_update_finished)
+        self.update_thread.started.connect(self.update_task.run)
+        self.startUpdate.connect(self.update_task.run)
+
+        self.update_thread.start()
+        self.startUpdate.emit(file_path)
+
+    def on_update_started(self):
+        self.update_button.setEnabled(False)
+
+    def on_update_finished(self):
+        self.update_button.setEnabled(True)
+        self.update_thread.quit()
+        self.update_thread.wait()    
 
     def init_ui(self):
         central_widget = QWidget(self)
@@ -84,15 +122,6 @@ class MainWindow(QMainWindow):
     def update_stock_list(self):
         logger.info("更新結束")
 
-    def on_run_button_click(self):
-        logger.info("開始更新股票資料...")
-
-        file_path = self.file_path_edit.text()
-        stock_book = Book()
-
-        self.update_stock_thread = UpdateStockThread(stock_book, file_path)
-        self.update_stock_thread.finished.connect(self.update_stock_list)
-        self.update_stock_thread.start()
 
 
 if __name__ == "__main__":
@@ -108,17 +137,14 @@ if __name__ == "__main__":
     )
 
     app = QApplication(sys.argv)
-
     main_window = MainWindow()
     handler = QTextEditHandler(main_window.log_window)
-    # handler.set_simple_formatter()
     handler.setLevel(logging.INFO)
     logger.add(
         handler,
         format="'<green>{time:YYYY-MM-DD HH:mm:ss}</green> - {message}",
         level=logging.INFO,
     )
-
     main_window.show()
-
     sys.exit(app.exec())
+    

@@ -18,11 +18,7 @@ class URL(StrEnum):
 class Stock:
     def __init__(self):
         self.date: str = ""
-
-        self.twse: typing.Dict = dict()
-        self.tpex: typing.Dict = dict()
-        self.esb: typing.Dict = dict()
-        self.twse_xdxr: typing.Dict = dict()
+        self.basic: typing.List[typing.Dict[str, typing.Any]] = list()
         self.xd: typing.List[typing.Dict[str, typing.Any]] = list()
         self.xr: typing.List[typing.Dict[str, typing.Any]] = list()
 
