@@ -6,11 +6,25 @@ import adodbapi
 from .stock import Stock
 import requests
 import datetime
+import sys
+
+
+logger.remove()
+logger.add(sys.stdout, level="INFO")
+
+logfilename = f"StockBookPy_{str(datetime.datetime.now().date()).replace('-','')}.log"
+logger.add(
+    logfilename,
+    retention="10 days",
+    rotation="00:00",
+    format="{time:YYYY-MM-DD hh:mm:ss} - {level} - {file} - {line} - {message}",
+    level=20,
+)
 
 
 class Book:
     def __init__(self) -> None:
-        print("Start StockBook...")
+        logger.info("Start StockBook...")
         self.stock = Stock()
         self.json_data = []  # 新增的屬性
 

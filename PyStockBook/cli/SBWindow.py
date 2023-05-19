@@ -132,7 +132,7 @@ if __name__ == "__main__":
         logfilename,
         retention="10 days",
         rotation="00:00",
-        format="{time:YYYY-MM-DD :mm:ss} - {level} - {file} - {line} - {message}",
+        format="{time:YYYY-MM-DD hh:mm:ss} - {level} - {file} - {line} - {message}",
         level=logging.INFO,
     )
 
