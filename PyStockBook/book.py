@@ -7,7 +7,7 @@ import requests
 import datetime
 import sys
 from PyStockBook.sdf import open_sdf
-from PyStockBook.BankingBusiness import get_pading_loan_data
+from PyStockBook.BankingBusiness import get_pading_loan_data, get_account_stock_df
 
 
 logger.remove()
@@ -22,12 +22,13 @@ logger.add(
     level=20,
 )
 
+
 class Book:
     def __init__(self) -> None:
         logger.info("Start StockBook...")
         self.stock = Stock()
         self.json_data = []  # 新增的屬性
-    
+
     def update_stock_close_price(self, sdf_path: typing.Optional[str] = None):
         def update_stock_basic():
             basic = self.stock.basic
@@ -183,7 +184,7 @@ class Book:
         connection.close()
         logger.info(f"更新完畢...")
 
-    def PaddingLoan(self,sdf_path: typing.Optional[str] = None):
+    def PaddingLoan(self, sdf_path: typing.Optional[str] = None):
         try:
             logger.info("更新借款資料")
             connection: adodbapi.Connection = open_sdf(sdf_path)
@@ -196,27 +197,56 @@ class Book:
         for one_pading_loan_data in pading_loan_data:
             insert_sql = """INSERT INTO LoanBalance  (accountno, accountday, loan,interestdate, interestdays, loaninterest) 
                         VALUES ('%s','%s', %s, '%s', %s, %s )""" % (
-                        one_pading_loan_data[0],
-                        one_pading_loan_data[1],
-                        one_pading_loan_data[2],
-                        one_pading_loan_data[3],
-                        one_pading_loan_data[4],
-                        one_pading_loan_data[5])
+                one_pading_loan_data[0],
+                one_pading_loan_data[1],
+                one_pading_loan_data[2],
+                one_pading_loan_data[3],
+                one_pading_loan_data[4],
+                one_pading_loan_data[5],
+            )
 
             try:
                 cursor.execute(insert_sql)
             except Exception as e:
-                logger.warning(f"帳戶信用更新 [{e}]")
+                logger.warning(f"借款資料更新錯誤 - [{e}]")
                 logger.warning(f"{insert_sql}")
                 break
         if pading_loan_data:
-            logger.info(f"🧭 寫入 {pading_loan_data[0][1]} -> {pading_loan_data[-1][1]} ,共 {len(pading_loan_data)} 筆")    
+            logger.info(
+                f"📊 寫入 {pading_loan_data[0][1]} -> {pading_loan_data[-1][1]} ,共 {len(pading_loan_data)} 筆"
+            )
             connection.commit()
         else:
-            logger.info(f"無更新資料")    
-        # logger.info("更新帳戶庫存")
+            logger.info(f"無更新資料")
+        logger.info("開始更新帳戶庫存")
 
+        df = get_account_stock_df(cursor)
+        account_stock = df.select(
+            [
+                "MarketPrice",
+                "MarketValue",
+                "MaintenanceRatio",
+                "GainLoss",
+                "GainLossPercent",
+                "AccountNo",
+                "TradingDay",
+                "TradingNo",
+            ]
+        ).to_dicts()
+
+        for one in account_stock:
+            update_sql = f"""UPDATE AccountStocks SET MarketPrice = {float(one['MarketPrice'])}, MarketValue = {int(one['MarketValue'])}, MaintenanceRatio = {float(one['MaintenanceRatio'])}, GainLoss = {int(one['GainLoss'])}, GainLossPercent = {float(one['GainLossPercent'])} WHERE AccountNo = '{one['AccountNo']}' AND TradingDay = '{one['TradingDay']}' AND TradingNo = '{one['TradingNo']}'"""
+            try:
+                cursor.execute(update_sql)
+
+            except Exception as e:
+                logger.warning(f"更新庫存明細失敗 {one} [{e}]")
+
+        if len(account_stock):
+            connection.commit()
+            logger.info(f"📊 更新 {len(account_stock)} 筆數")
+
+        # logger.info(df)
         cursor.close()
         connection.close()
         logger.info(f"更新完畢...")
-
