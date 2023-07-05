@@ -1,5 +1,4 @@
 from loguru import logger
-from PyStockBook.sdf import open_sdf
 import json
 import typing
 import adodbapi
@@ -7,6 +6,8 @@ from .stock import Stock
 import requests
 import datetime
 import sys
+from PyStockBook.sdf import open_sdf
+from PyStockBook.BankingBusiness import get_pading_loan_data
 
 
 logger.remove()
@@ -21,13 +22,12 @@ logger.add(
     level=20,
 )
 
-
 class Book:
     def __init__(self) -> None:
         logger.info("Start StockBook...")
         self.stock = Stock()
         self.json_data = []  # 新增的屬性
-
+    
     def update_stock_close_price(self, sdf_path: typing.Optional[str] = None):
         def update_stock_basic():
             basic = self.stock.basic
@@ -182,3 +182,41 @@ class Book:
         cursor.close()
         connection.close()
         logger.info(f"更新完畢...")
+
+    def PaddingLoan(self,sdf_path: typing.Optional[str] = None):
+        try:
+            logger.info("更新借款資料")
+            connection: adodbapi.Connection = open_sdf(sdf_path)
+        except Exception as e:
+            logger.warning(f"無法開啟資料庫 {e}")
+            return
+
+        cursor: adodbapi.Cursor = connection.cursor()
+        pading_loan_data = get_pading_loan_data(cursor)
+        for one_pading_loan_data in pading_loan_data:
+            insert_sql = """INSERT INTO LoanBalance  (accountno, accountday, loan,interestdate, interestdays, loaninterest) 
+                        VALUES ('%s','%s', %s, '%s', %s, %s )""" % (
+                        one_pading_loan_data[0],
+                        one_pading_loan_data[1],
+                        one_pading_loan_data[2],
+                        one_pading_loan_data[3],
+                        one_pading_loan_data[4],
+                        one_pading_loan_data[5])
+
+            try:
+                cursor.execute(insert_sql)
+            except Exception as e:
+                logger.warning(f"帳戶信用更新 [{e}]")
+                logger.warning(f"{insert_sql}")
+                break
+        if pading_loan_data:
+            logger.info(f"🧭 寫入 {pading_loan_data[0][1]} -> {pading_loan_data[-1][1]} ,共 {len(pading_loan_data)} 筆")    
+            connection.commit()
+        else:
+            logger.info(f"無更新資料")    
+        # logger.info("更新帳戶庫存")
+
+        cursor.close()
+        connection.close()
+        logger.info(f"更新完畢...")
+

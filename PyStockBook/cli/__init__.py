@@ -6,6 +6,7 @@ from PyStockBook.book import Book
 def run():
     v = Book()
     v.update_stock_close_price()
+    v.PaddingLoan()
     input("按任意鍵離開....")
 
 
