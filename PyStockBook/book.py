@@ -7,7 +7,11 @@ import requests
 import datetime
 import sys
 from PyStockBook.sdf import open_sdf
-from PyStockBook.BankingBusiness import get_pading_loan_data, get_account_stock_df
+from PyStockBook.BankingBusiness import (
+    get_pading_loan_data,
+    get_account_stock_df,
+    summary_account_margin,
+)
 
 
 logger.remove()
@@ -231,6 +235,8 @@ class Book:
                 "AccountNo",
                 "TradingDay",
                 "TradingNo",
+                "d",
+                "num",
             ]
         ).to_dicts()
 
@@ -246,7 +252,19 @@ class Book:
             connection.commit()
             logger.info(f"📊 更新 {len(account_stock)} 筆數")
 
-        # logger.info(df)
+        logger.info("開始更新帳戶資產")
+        account_summary = summary_account_margin(cursor).to_dicts()
+        for one in account_summary:
+            update_sql = f"""UPDATE Account SET MarginAmount = {one['MarginAmount']}, MarginRemain = {one['MarginRemain']}, ShortAmount = {one['ShortAmount']}, ShortRemain = {one['ShortRemain']}, MaintenanceRatio = {one['MaintenanceRatio']}, LoanAmount = {one['Loan']}, LoanRatio = {one['LoanRatio']}, Amount = {int(one['CostAmount'])}, MarketValue = {int(one['MarketValue'])} WHERE AccountNo = '{one['AccountNo']}'"""
+            try:
+                cursor.execute(update_sql)
+            except Exception as e:
+                logger.warning(f"更新帳戶資訊失敗 {one} [{e}]")
+
+        if len(account_summary):
+            connection.commit()
+            logger.info(f"📊 更新 {len(account_summary)} 筆數")
+
         cursor.close()
         connection.close()
         logger.info(f"更新完畢...")

@@ -142,11 +142,34 @@ def account_stock(df) -> pl.DataFrame:
                 )
                 .otherwise(0)
                 .alias("RealizedValue"),
+                pl.when(pl.col("HoldingType") == 1)
+                .then(0)
+                .when(pl.col("HoldingType") == 2)
+                .then(
+                    (
+                        pl.col("Collateral")
+                        + pl.col("MarketValue")
+                        - (pl.col("MarketValue") * 0.001425).floor()
+                        - pl.col("MarketValue") * 0.003
+                    ).round(0)
+                )
+                .when(pl.col("HoldingType") == 3)
+                .then(pl.col("Collateral") + pl.col("Margin"))
+                .otherwise(0)
+                .alias("d"),
+                pl.when(pl.col("HoldingType") == 1)
+                .then(0)
+                .when(pl.col("HoldingType") == 2)
+                .then(pl.col("Margin"))
+                .when(pl.col("HoldingType") == 3)
+                .then(pl.col("MarketValue") - (pl.col("CostValue") * 1.001425).floor())
+                .otherwise(0)
+                .alias("num"),
             ]
         )
         .with_columns(
             [
-                (pl.col("RealizedValue") - pl.col("Cost")).alias("GainLoss").round(0),
+                (pl.col("RealizedValue") - pl.col("Cost")).round(0).alias("GainLoss"),
                 pl.when(pl.col("Cost") == 0)
                 .then(0)
                 .otherwise((pl.col("RealizedValue") - pl.col("Cost")) / pl.col("Cost"))
@@ -189,3 +212,84 @@ def get_account_stock_df(cursor) -> pl.DataFrame:
     ]
     df = pl.DataFrame(data=list_of_dicts, infer_schema_length=10000)
     return account_stock(df)
+
+
+def get_account_margin(cursor):
+    # sql="""UPDATE Account SET MarginAmount = NULL, MarginRemain = NULL, ShortAmount = NULL, ShortRemain = NULL, MaintenanceRatio = NULL, LoanAmount = NULL, LoanRatio = NULL, Amount = NULL, MarketValue = NULL"""
+    # cursor.execute(sql)
+    sql = """SELECT * FROM Account """
+    cursor.execute(sql)
+    sql_data = cursor.fetchall()
+    list_of_dicts = [
+        dict(zip([column[0] for column in cursor.description], row)) for row in sql_data
+    ]
+    Account = pl.DataFrame(data=list_of_dicts)
+
+    sql = """SELECT Level,MarginLimit,ShortLimit FROM MarginLevel """
+    cursor.execute(sql)
+    sql_data = cursor.fetchall()
+    list_of_dicts = [
+        dict(zip([column[0] for column in cursor.description], row)) for row in sql_data
+    ]
+    Margin = pl.DataFrame(data=list_of_dicts)
+
+    # 取得最近交易日
+    cursor.execute(
+        f"SELECT TOP (1) Day FROM Schedule WHERE IsClosed=0 and day<='{str(datetime.date.today())}' ORDER BY Day desc"
+    )
+    open_date = [i._getValue(0).date() for i in cursor.fetchall()][0]
+
+    sql = f"""select * from LoanBalance where AccountDay='{open_date}'"""
+    # logger.info(sql)
+    cursor.execute(sql)
+    sql_data = cursor.fetchall()
+    list_of_dicts = [
+        dict(zip([column[0] for column in cursor.description], row)) for row in sql_data
+    ]
+
+    LoadBalance = pl.DataFrame(data=list_of_dicts)
+    m = Account.join(Margin, left_on="MarginLevel", right_on="Level", how="left")
+    return m.join(LoadBalance, on="AccountNo", how="left")
+
+    # return Account.join(Margin,left_on='MarginLevel',right_on='Level',how='left')
+
+
+def summary_account_margin(cursor):
+    trade_detail = get_account_stock_df(cursor)
+    margin_level = get_account_margin(cursor)
+    df_detail = trade_detail.join(margin_level, on="AccountNo", how="left").fill_null(0)
+    _ = (
+        df_detail.groupby("AccountNo")
+        .agg(
+            pl.col("Loan").first(),
+            pl.col("RealizedValue").sum().alias("MarketValue"),
+            pl.col("MarginType").first(),
+            pl.col("MarginLimit").first(),
+            pl.col("ShortLimit").first(),
+            pl.col("MarginAmount").sum().alias("MarginAmount"),
+            pl.col("ShortAmount").sum().alias("ShortAmount"),
+            pl.when(pl.col("MarginType").first() == 1)
+            .then(pl.col("MarginLimit").first() - pl.col("MarginAmount").sum())
+            .otherwise(0)
+            .alias("MarginRemain"),
+            pl.when(pl.col("MarginType").first() == 1)
+            .then(pl.col("ShortLimit").first() - pl.col("ShortAmount").sum())
+            .otherwise(0)
+            .alias("ShortRemain"),
+            pl.when(pl.col("num").sum() > 0)
+            .then((pl.col("d").sum() / pl.col("num").sum()).round(4))
+            .otherwise(0)
+            .alias("MaintenanceRatio"),
+            pl.col("Cost").sum().alias("CostAmount"),
+            # MaintenanceRatio;
+        )
+        .with_columns(
+            [
+                pl.when((pl.col("Loan") > 0) & (pl.col("MarketValue") > 0))
+                .then((pl.col("MarketValue") - pl.col("Loan")) / pl.col("MarketValue"))
+                .otherwise(0)
+                .alias("LoanRatio")
+            ]
+        )
+    )
+    return _
