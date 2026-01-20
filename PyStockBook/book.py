@@ -255,11 +255,24 @@ class Book:
         logger.info("開始更新帳戶資產")
         account_summary = summary_account_margin(cursor).to_dicts()
         for one in account_summary:
-            update_sql = f"""UPDATE Account SET MarginAmount = {one['MarginAmount']}, MarginRemain = {one['MarginRemain']}, ShortAmount = {one['ShortAmount']}, ShortRemain = {one['ShortRemain']}, MaintenanceRatio = {one['MaintenanceRatio']}, LoanAmount = {one['Loan']}, LoanRatio = {one['LoanRatio']}, Amount = {int(one['CostAmount'])}, MarketValue = {int(one['MarketValue'])} WHERE AccountNo = '{one['AccountNo']}'"""
+            # 處理 None 值，轉換為 SQL NULL 或 0
+            margin_amount = 0 if one['MarginAmount'] is None else one['MarginAmount']
+            margin_remain = 0 if one['MarginRemain'] is None else one['MarginRemain']
+            short_amount = 0 if one['ShortAmount'] is None else one['ShortAmount']
+            short_remain = 0 if one['ShortRemain'] is None else one['ShortRemain']
+            maintenance_ratio = 0 if one['MaintenanceRatio'] is None else round(float(one['MaintenanceRatio']), 4)
+            loan_amount = 0 if one['Loan'] is None else one['Loan']
+            # LoanRatio 四捨五入到 4 位小數，避免精度問題
+            loan_ratio = 0 if one['LoanRatio'] is None else round(float(one['LoanRatio']), 4)
+            cost_amount = 0 if one['CostAmount'] is None else int(one['CostAmount'])
+            market_value = 0 if one['MarketValue'] is None else int(one['MarketValue'])
+
+            update_sql = f"""UPDATE Account SET MarginAmount = {margin_amount}, MarginRemain = {margin_remain}, ShortAmount = {short_amount}, ShortRemain = {short_remain}, MaintenanceRatio = {maintenance_ratio}, LoanAmount = {loan_amount}, LoanRatio = {loan_ratio}, Amount = {cost_amount}, MarketValue = {market_value} WHERE AccountNo = '{one['AccountNo']}'"""
             try:
                 cursor.execute(update_sql)
             except Exception as e:
                 logger.warning(f"更新帳戶資訊失敗 {one} [{e}]")
+                logger.warning(f"Command: {update_sql}")
 
         if len(account_summary):
             connection.commit()
