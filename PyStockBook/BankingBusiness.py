@@ -46,14 +46,19 @@ def current_account_loan(cursor):
 
 
 def get_interest_date_and_days(all_open_date, open_date=datetime.date.today()):
-    interest_date = [day for day in all_open_date if day >= open_date][2]
-    next_open_date = [day for day in all_open_date if day >= open_date][3]
+    upcoming = [day for day in all_open_date if day >= open_date]
+    if len(upcoming) < 4:
+        raise ValueError(
+            f"Not enough open days after {open_date}: need 4, got {len(upcoming)}"
+        )
+    interest_date = upcoming[2]
+    next_open_date = upcoming[3]
     return open_date, interest_date, (next_open_date - interest_date).days
 
 
 def get_pading_loan_data(cursor):
     cursor.execute(
-        f"SELECT Day FROM Schedule WHERE IsClosed=0 and day<='{str(datetime.date.today()+datetime.timedelta(days=30))}' ORDER BY Day"
+        f"SELECT Day FROM Schedule WHERE IsClosed=0 and day<='{str(datetime.date.today()+datetime.timedelta(days=60))}' ORDER BY Day"
     )
     all_open_date = [i._getValue(0).date() for i in cursor.fetchall()]
     df = current_account_loan(cursor)
