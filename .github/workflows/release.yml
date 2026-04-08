@@ -3,11 +3,13 @@ name: Build & Release Windows exe
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - '*.*.*'        # 支援 v0.0.2 或 0.0.2 兩種命名
+  release:
+    types: [published, edited, created]
   workflow_dispatch:
     inputs:
       tag:
-        description: '手動觸發時使用的版本號 (例如 v0.0.2)'
+        description: '要建置的 tag 名稱 (例如 0.0.2 或 v0.0.2),會把 exe 上傳到同名 Release'
         required: true
         type: string
 
@@ -18,8 +20,24 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - name: Checkout
+      - name: Determine tag name
+        id: tag
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_EVENT_NAME -eq 'release') {
+            $tag = '${{ github.event.release.tag_name }}'
+          } elseif ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
+            $tag = '${{ inputs.tag }}'
+          } else {
+            $tag = $env:GITHUB_REF -replace 'refs/tags/', ''
+          }
+          echo "name=$tag" >> $env:GITHUB_OUTPUT
+          echo "Resolved tag: $tag"
+
+      - name: Checkout repo at tag
         uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.name }}
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
@@ -34,24 +52,19 @@ jobs:
           pip install -e .
           pip install pyinstaller
 
-      - name: Read version from package
+      - name: Read package version
         id: version
         shell: pwsh
         run: |
-          $tag = if ($env:GITHUB_REF -like 'refs/tags/*') {
-            $env:GITHUB_REF -replace 'refs/tags/', ''
-          } else {
-            '${{ inputs.tag }}'
-          }
           $pkgVersion = python -c "import PyStockBook; print(PyStockBook.__version__)"
-          echo "tag=$tag" >> $env:GITHUB_OUTPUT
           echo "pkg_version=$pkgVersion" >> $env:GITHUB_OUTPUT
-          echo "Tag: $tag / Package: $pkgVersion"
+          echo "Package version: $pkgVersion"
 
       - name: Build Windows exe with PyInstaller
         run: |
           pyinstaller --onefile --name PyStockBook --console ^
             --collect-all PyStockBook ^
+            --collect-all polars ^
             --hidden-import adodbapi ^
             --hidden-import win32com ^
             --hidden-import win32com.client ^
@@ -68,19 +81,17 @@ jobs:
       - name: Upload exe as workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PyStockBook-${{ steps.version.outputs.tag }}
+          name: PyStockBook-${{ steps.tag.outputs.name }}
           path: |
             dist/PyStockBook.exe
             dist/PyStockBook.exe.sha256
           if-no-files-found: error
 
-      - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload exe to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.tag }}
-          generate_release_notes: true
+          tag_name: ${{ steps.tag.outputs.name }}
           files: |
             dist/PyStockBook.exe
             dist/PyStockBook.exe.sha256
+          fail_on_unmatched_files: true
