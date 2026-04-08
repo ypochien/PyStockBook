@@ -115,16 +115,25 @@ autopytoexe
 
 產出的 `PyStockBook.exe` 會放在 `output/` 資料夾,複製給客戶即可。
 
-### 發行新版本流程
+### 發行新版本流程(推薦:GitHub Actions 自動化)
+
+專案已內建 `.github/workflows/release.yml`,push 一個 `v*.*.*` tag 就會自動在 Windows runner 上建置 `PyStockBook.exe`,並發佈到對應的 GitHub Release:
 
 1. 修改 `PyStockBook/__init__.py` 的 `__version__`(遵守 [SemVer](https://semver.org/lang/zh-TW/))
-2. 在 master 上打 tag 並推到遠端:
+2. Commit 並合併進 `master`
+3. 在 master 上打 tag 並推到遠端:
    ```bash
    git tag -a v0.0.2 -m "fix: PaddingLoan IndexError"
    git push origin v0.0.2
    ```
-3. 在乾淨的 Windows 環境執行上方的打包流程
-4. 把新的 `PyStockBook.exe` 交付給客戶
+4. 到 GitHub 的 Actions 頁面看 build 進度,完成後 `PyStockBook.exe` 會出現在 [Releases](../../releases) 頁面
+5. 把 Release 頁面的下載連結交給客戶(或直接下載 exe 後用隨身碟/雲端傳給客戶)
+
+若 workflow 尚未觸發,也可以在 GitHub Actions 頁面手動 `Run workflow`,輸入版本號即可測試建置(不會自動發 Release,只會產生 artifact)。
+
+### 發行新版本流程(手動打包,備案)
+
+若需要在本機手動打包(例如測試或 CI 無法使用),請在 Windows 環境執行上方的「打包流程」,然後把新的 `PyStockBook.exe` 交付給客戶。
 
 ### 客戶端更新步驟
 

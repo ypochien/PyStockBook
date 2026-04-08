@@ -1,0 +1,86 @@
+name: Build & Release Windows exe
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '手動觸發時使用的版本號 (例如 v0.0.2)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install project and build dependencies
+        run: |
+          pip install -e .
+          pip install pyinstaller
+
+      - name: Read version from package
+        id: version
+        shell: pwsh
+        run: |
+          $tag = if ($env:GITHUB_REF -like 'refs/tags/*') {
+            $env:GITHUB_REF -replace 'refs/tags/', ''
+          } else {
+            '${{ inputs.tag }}'
+          }
+          $pkgVersion = python -c "import PyStockBook; print(PyStockBook.__version__)"
+          echo "tag=$tag" >> $env:GITHUB_OUTPUT
+          echo "pkg_version=$pkgVersion" >> $env:GITHUB_OUTPUT
+          echo "Tag: $tag / Package: $pkgVersion"
+
+      - name: Build Windows exe with PyInstaller
+        run: |
+          pyinstaller --onefile --name PyStockBook --console ^
+            --collect-all PyStockBook ^
+            --hidden-import adodbapi ^
+            --hidden-import win32com ^
+            --hidden-import win32com.client ^
+            PyStockBook/cli/__init__.py
+        shell: cmd
+
+      - name: Compute SHA256 checksum
+        shell: pwsh
+        run: |
+          $hash = Get-FileHash dist\PyStockBook.exe -Algorithm SHA256
+          "$($hash.Hash)  PyStockBook.exe" | Out-File -Encoding ASCII dist\PyStockBook.exe.sha256
+          Get-Content dist\PyStockBook.exe.sha256
+
+      - name: Upload exe as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PyStockBook-${{ steps.version.outputs.tag }}
+          path: |
+            dist/PyStockBook.exe
+            dist/PyStockBook.exe.sha256
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            dist/PyStockBook.exe
+            dist/PyStockBook.exe.sha256
