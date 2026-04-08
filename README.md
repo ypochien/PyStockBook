@@ -97,10 +97,44 @@ make test-cov
 
 ## 打包執行檔
 
+將專案打包成單一 `PyStockBook.exe`,方便交付給沒有 Python 環境的客戶端使用。
+
+### 打包流程
+
 ```bash
+# 1. 取得最新原始碼
+git pull origin master
+
+# 2. 安裝/更新相依套件
+pip install -e .
 pip install auto-py-to-exe
+
+# 3. 啟動 GUI 工具進行打包
 autopytoexe
 ```
+
+產出的 `PyStockBook.exe` 會放在 `output/` 資料夾,複製給客戶即可。
+
+### 發行新版本流程
+
+1. 修改 `PyStockBook/__init__.py` 的 `__version__`(遵守 [SemVer](https://semver.org/lang/zh-TW/))
+2. 在 master 上打 tag 並推到遠端:
+   ```bash
+   git tag -a v0.0.2 -m "fix: PaddingLoan IndexError"
+   git push origin v0.0.2
+   ```
+3. 在乾淨的 Windows 環境執行上方的打包流程
+4. 把新的 `PyStockBook.exe` 交付給客戶
+
+### 客戶端更新步驟
+
+客戶不需要重裝 Python 或資料庫,只要:
+
+1. 關掉正在執行的 `PyStockBook.exe`
+2. 將舊的 exe(例如 `G:\stockbook\PyStockBook.exe`)替換成新版
+3. 重新執行 `PyStockBook.exe`
+
+`StockBook.sdf` 資料檔位於客戶端本地,不會因為更新 exe 而被覆蓋。
 
 ## 資料來源
 
